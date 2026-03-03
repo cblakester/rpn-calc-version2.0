@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#2c3040"/>
+<title>RPN Calc</title>
+<style>
+:root {
+  --chrome1:#e6e6e6; --chrome2:#bfc3c7; --chrome3:#8e9399;
+  --accent:#4da3ff; --accent-glow:rgba(77,163,255,0.4);
+  --green:#00c97c; --red:#e53935; --yellow:#ffb300;
+  --softkey:#9575cd; --gap-color:#7a7a8a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:"Segoe UI",Roboto,Arial,sans-serif;
+  background:linear-gradient(135deg,#d7d7d7,#f5f5f5 40%,#cfcfcf 70%,#f2f2f2);
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;
+  padding:24px 16px;
+  padding-top:max(24px,env(safe-area-inset-top));
+  padding-bottom:max(24px,env(safe-area-inset-bottom));
+}
+.calc{width:100%;max-width:480px;}
+.display{
+  background:linear-gradient(145deg,#2d3138,#1e2126);
+  border-radius:14px;padding:14px 16px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.35);
+  color:white;margin-bottom:10px;
+}
+.stack-row{display:flex;justify-content:space-between;font-size:16px;opacity:0.75;padding:2px 0;}
+.stack-row .lbl{opacity:0.55;min-width:28px;}
+.stack-row.level1{opacity:1;font-size:19px;font-weight:600;}
+.input-line{margin-top:10px;font-size:26px;font-weight:700;min-height:34px;color:#fff;letter-spacing:0.5px;}
+.cursor{animation:blink 1s step-end infinite;}
+@keyframes blink{50%{opacity:0;}}
+.status-line{margin-top:6px;font-size:13px;min-height:18px;color:var(--accent);text-shadow:0 0 8px var(--accent-glow);}
+.softkeys{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:8px;}
+.softkeys button{
+  padding:10px 2px;font-size:12px;font-weight:700;border-radius:8px;border:none;
+  background:linear-gradient(#d1c4e9,var(--softkey));color:white;
+  box-shadow:0 3px 6px rgba(0,0,0,0.2);cursor:pointer;min-height:38px;line-height:1.2;
+}
+.softkeys button.cat-btn{background:linear-gradient(#80cbc4,#00897b);font-size:10px;}
+.softkeys button.next-btn{background:linear-gradient(#ffb74d,#ef6c00);font-size:16px;}
+.softkeys button:disabled{opacity:0.25;cursor:default;}
+.softkeys button:not(:disabled):active{transform:scale(0.95);}
+.controls{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:10px;align-items:stretch;}
+select{width:100%;padding:10px;border-radius:8px;border:none;background:linear-gradient(var(--chrome1),var(--chrome2));font-weight:600;font-size:14px;cursor:pointer;}
+#trimBtn{padding:10px 14px;border-radius:8px;border:none;background:linear-gradient(#5cb0ff,#2d7cff);color:white;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;}
+.keypad-wrap{background:var(--gap-color);border-radius:14px;padding:10px;box-shadow:0 4px 16px rgba(0,0,0,0.25);}
+.keypad{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;}
+.key{
+  padding:16px 4px;font-size:16px;font-weight:700;border-radius:10px;border:none;
+  background:linear-gradient(var(--chrome1),var(--chrome3));box-shadow:0 4px 8px rgba(0,0,0,0.22);
+  cursor:pointer;touch-action:manipulation;position:relative;
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+}
+.key:active{transform:scale(0.94);}
+.key.op    {background:linear-gradient(#5cb0ff,#2d7cff);color:white;}
+.key.enter {background:linear-gradient(#5dffb5,var(--green));color:#003d26;grid-column:span 2;}
+.key.danger{background:linear-gradient(#ff7b7b,var(--red));color:white;}
+.key.stack {background:linear-gradient(#ffe082,var(--yellow));color:#5c3e00;}
+.key.shift {background:linear-gradient(#ffeb3b,#f57f17);color:#3e2000;}
+.key.shift.active{background:linear-gradient(#f57f17,#ff9800);color:white;box-shadow:0 0 12px #ff980088;}
+.key.units-active{box-shadow:0 0 14px #9575cd99;}
+#offlineBadge{
+  display:none;background:#555;color:#fff;font-size:12px;font-weight:600;
+  border-radius:6px;padding:4px 10px;margin-bottom:8px;text-align:center;
+}
+#offlineBadge.show{display:block;}
+#pasteModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;z-index:100;}
+#pasteModal.show{display:flex;}
+#pasteBox{background:#2d3138;border-radius:14px;padding:22px;width:85%;max-width:360px;box-shadow:0 10px 40px rgba(0,0,0,0.5);}
+#pasteBox p{color:#aaa;font-size:13px;margin-bottom:12px;line-height:1.5;}
+#pasteInput{width:100%;padding:12px;border-radius:8px;border:2px solid var(--accent);background:#1e2126;color:white;font-size:22px;font-weight:600;outline:none;margin-bottom:14px;text-align:right;}
+.paste-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.paste-btns button{padding:13px;border-radius:8px;border:none;font-size:15px;font-weight:700;cursor:pointer;}
+#pasteOk{background:linear-gradient(#5dffb5,#00c97c);color:#003d26;}
+#pasteCancel{background:linear-gradient(#ff7b7b,#e53935);color:white;}
+</style>
+</head>
+<body>
+<div class="calc">
+  <div id="offlineBadge">⚡ Offline mode</div>
+
+  <div class="display">
+    <div id="stackDisplay"></div>
+    <div class="input-line" id="inputLine"></div>
+    <div class="status-line" id="statusLine"></div>
+  </div>
+
+  <div class="softkeys" id="softkeyBar">
+    <button id="skA" disabled>—</button>
+    <button id="skB" disabled>—</button>
+    <button id="skC" disabled>—</button>
+    <button id="skD" disabled>—</button>
+    <button id="skE" disabled>—</button>
+    <button id="skF" disabled>—</button>
+  </div>
+
+  <div class="controls">
+    <select id="precision" onchange="saveSettings();render();">
+      <option value="8">1/8</option>
+      <option value="16" selected>1/16</option>
+      <option value="32">1/32</option>
+      <option value="64">1/64</option>
+    </select>
+    <select id="roundMode" onchange="saveSettings();render();">
+      <option value="nearest">Nearest</option>
+      <option value="up">Up</option>
+      <option value="down">Down</option>
+    </select>
+    <button id="trimBtn" onclick="trimDecimal()">TRIM</button>
+  </div>
+
+  <div class="keypad-wrap">
+    <div class="keypad">
+      <button class="key danger" onclick="clearAll()">AC</button>
+      <button class="key stack"  onclick="undo()">UNDO</button>
+      <button class="key op"     id="commaBtn" onclick="toggleCommas()">1,000</button>
+      <button class="key op"     style="font-size:11px;" onclick="toggleDisplayMode()">DEC/FRAC</button>
+      <button class="key danger" onclick="back()">⌫</button>
+
+      <button class="key enter"  onclick="handleEnter()">ENTER</button>
+      <button class="key stack"  onclick="swap()">SWAP</button>
+      <button class="key stack"  onclick="rollDown()">R↓</button>
+      <button class="key danger" onclick="drop()">DROP</button>
+
+      <button class="key op"     id="unitsBtn" onclick="toggleUnitsMode()">UNITS</button>
+      <button class="key"        onclick="digit('7')">7</button>
+      <button class="key"        onclick="digit('8')">8</button>
+      <button class="key"        onclick="digit('9')">9</button>
+      <button class="key op"     onclick="operate('div')">÷</button>
+
+      <button class="key shift"  id="shiftBtn" onclick="toggleShift()">
+        <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
+          <line x1="22" y1="15" x2="22" y2="6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <line x1="22" y1="6" x2="4" y2="6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <polyline points="9,1 4,6 9,11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </button>
+      <button class="key"        onclick="digit('4')">4</button>
+      <button class="key"        onclick="digit('5')">5</button>
+      <button class="key"        onclick="digit('6')">6</button>
+      <button class="key op"     onclick="operate('times')">×</button>
+
+      <button class="key op"     onclick="openPasteModal()">PASTE</button>
+      <button class="key"        onclick="digit('1')">1</button>
+      <button class="key"        onclick="digit('2')">2</button>
+      <button class="key"        onclick="digit('3')">3</button>
+      <button class="key op"     onclick="operate('minus')">−</button>
+
+      <button class="key op"     onclick="digit('/')">／</button>
+      <button class="key"        onclick="digit('0')">0</button>
+      <button class="key"        onclick="digit('.')">.</button>
+      <button class="key"        onclick="digit(' ')">SPC</button>
+      <button class="key op"     onclick="operate('plus')">+</button>
+    </div>
+  </div>
+</div>
+
+<div id="pasteModal">
+  <div id="pasteBox">
+    <p>Long-press the field below, tap <strong style="color:white;">Paste</strong>, then press OK</p>
+    <input id="pasteInput" type="text" inputmode="decimal" placeholder="Paste here…"/>
+    <div class="paste-btns">
+      <button id="pasteOk"     onclick="confirmPaste()">OK</button>
+      <button id="pasteCancel" onclick="closePasteModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+var stack = [];
+var lastStack = null;
+var input = "";
+var unitsMode = 'off'; // 'off' | 'cat' | 'units'
+var shifted = false;
+var currentCat = null;
+var catPage = 0;       // which page of units we're on within a category
+var displayMode = 'fraction';
+var commaMode = false;
+
+// ── Unit Data ─────────────────────────────────────────────────────────────
+// Categories with their unit keys (arrays can exceed 5; extras page via →)
+var CATEGORIES = ['Length','Area','Volume','Temp','Weight','Speed'];
+
+var CAT_UNITS = {
+  Length:  ['in','ft','mi','mm','cm','m'],
+  Area:    ['in²','ft²','mi²','mm²','cm²','m²'],
+  // Volume: original 6 + 6 cooking = 12 total, paged 5 at a time
+  Volume:  ['in³','ft³','gal','L','cm³','m³','tsp','tbsp','cup','fl oz','pt','qt'],
+  Temp:    ['°F','°C','K'],
+  Weight:  ['lb','oz','ton','g','kg','tonne'],
+  Speed:   ['mph','fps','kph','m/s','knot']
+};
+
+// SI conversion factors (or special handlers for temp)
+var UNITS = {
+  'in':   {dim:'length',f:0.0254},
+  'ft':   {dim:'length',f:0.3048},
+  'mi':   {dim:'length',f:1609.34},
+  'mm':   {dim:'length',f:0.001},
+  'cm':   {dim:'length',f:0.01},
+  'm':    {dim:'length',f:1},
+  'in²':  {dim:'area',f:6.4516e-4},
+  'ft²':  {dim:'area',f:0.092903},
+  'mi²':  {dim:'area',f:2.589988e6},
+  'mm²':  {dim:'area',f:1e-6},
+  'cm²':  {dim:'area',f:1e-4},
+  'm²':   {dim:'area',f:1},
+  'in³':  {dim:'volume',f:1.6387e-5},
+  'ft³':  {dim:'volume',f:0.0283168},
+  'gal':  {dim:'volume',f:0.00378541},
+  'L':    {dim:'volume',f:0.001},
+  'cm³':  {dim:'volume',f:1e-6},
+  'm³':   {dim:'volume',f:1},
+  'tsp':  {dim:'volume',f:4.92892e-6},
+  'tbsp': {dim:'volume',f:1.47868e-5},
+  'cup':  {dim:'volume',f:2.36588e-4},
+  'fl oz':{dim:'volume',f:2.95735e-5},
+  'pt':   {dim:'volume',f:4.73176e-4},
+  'qt':   {dim:'volume',f:9.46353e-4},
+  '°F':   {dim:'temp',toK:function(v){return (v-32)*5/9+273.15;},fromK:function(v){return (v-273.15)*9/5+32;}},
+  '°C':   {dim:'temp',toK:function(v){return v+273.15;},fromK:function(v){return v-273.15;}},
+  'K':    {dim:'temp',toK:function(v){return v;},fromK:function(v){return v;}},
+  'lb':   {dim:'mass',f:0.453592},
+  'oz':   {dim:'mass',f:0.0283495},
+  'ton':  {dim:'mass',f:907.185},
+  'g':    {dim:'mass',f:0.001},
+  'kg':   {dim:'mass',f:1},
+  'tonne':{dim:'mass',f:1000},
+  'mph':  {dim:'speed',f:0.44704},
+  'fps':  {dim:'speed',f:0.3048},
+  'kph':  {dim:'speed',f:0.277778},
+  'm/s':  {dim:'speed',f:1},
+  'knot': {dim:'speed',f:0.514444}
+};
+
+function el(id){return document.getElementById(id);}
+function gcd(a,b){return b?gcd(b,a%b):a;}
+
+// ── Undo ──────────────────────────────────────────────────────────────────
+function saveUndo(){
+  lastStack=stack.map(function(i){return {value:i.value,unit:i.unit,decPlaces:i.decPlaces};});
+}
+function undo(){
+  if(!lastStack){status('Nothing to undo',true);return;}
+  stack=lastStack;lastStack=null;input='';
+  status('Undone');render();
+}
+
+// ── Format ────────────────────────────────────────────────────────────────
+function fmtDecimal(val,places){
+  if(places!==null&&places!==undefined){
+    var s=val.toFixed(places);
+    if(s.indexOf('.')!==-1) s=s.replace(/0+$/,'').replace(/\.$/,'');
+    return s||'0';
+  }
+  return parseFloat(val.toPrecision(10)).toString()||'0';
+}
+function addCommas(s){
+  return s.replace(/^(-?\d+)/,function(n){
+    return n.replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  });
+}
+function fmtNum(val,decPlaces){
+  if(!isFinite(val)) return 'ERR';
+  if(displayMode==='decimal') return fmtDecimal(val,decPlaces);
+  var denom=parseInt(el('precision').value)||16;
+  var rm=el('roundMode').value;
+  var n=val*denom;
+  n=rm==='nearest'?Math.round(n):rm==='up'?Math.ceil(n):Math.floor(n);
+  if(n===0) return '0';
+  var sign=n<0?'-':''; n=Math.abs(n);
+  var g=gcd(n,denom),nr=n/g,dr=denom/g;
+  var whole=Math.floor(nr/dr),rem=nr%dr;
+  if(rem===0) return sign+whole;
+  if(whole===0) return sign+rem+'/'+dr;
+  return sign+whole+' '+rem+'/'+dr;
+}
+function fmtVal(item){
+  var s=fmtNum(item.value,item.decPlaces);
+  if(commaMode) s=addCommas(s);
+  return s+(item.unit?' '+item.unit:'');
+}
+function status(msg,isErr){
+  var e=el('statusLine');
+  e.textContent=msg;
+  e.style.color=isErr?'#ff6e6e':'';
+  e.style.textShadow=isErr?'0 0 8px rgba(255,80,80,0.5)':'';
+}
+
+// ── Softkey page helpers ──────────────────────────────────────────────────
+// Returns up to 5 unit labels for the current page, plus whether there are more pages
+function getUnitPage(cat, page){
+  var all = CAT_UNITS[cat];
+  var totalPages = Math.ceil(all.length / 5);
+  var start = page * 5;
+  var slice = all.slice(start, start + 5);
+  var hasMore = totalPages > 1;
+  return {units: slice, hasMore: hasMore, totalPages: totalPages};
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+function render(){
+  var len=stack.length, html='';
+  for(var lvl=5;lvl>=1;lvl--){
+    var idx=len-lvl;
+    var cls=lvl===1?'stack-row level1':'stack-row';
+    var val=idx>=0?escHtml(fmtVal(stack[idx])):'';
+    html+='<div class="'+cls+'"><span class="lbl">X'+lvl+'</span><span>'+val+'</span></div>';
+  }
+  el('stackDisplay').innerHTML=html;
+  el('inputLine').innerHTML=(input?escHtml(input):'')+' <span class="cursor">▎</span>';
+  el('shiftBtn').classList.toggle('active',shifted);
+  el('unitsBtn').classList.toggle('units-active',unitsMode!=='off');
+
+  if(unitsMode==='off'){
+    setSoftkeys([]);
+    status('');
+  } else if(unitsMode==='cat'){
+    setSoftkeys(CATEGORIES,true,false);
+    status('Pick category →');
+  } else {
+    var pg = getUnitPage(currentCat, catPage);
+    var pageInfo = pg.totalPages > 1 ? ' (p.'+(catPage+1)+'/'+pg.totalPages+')' : '';
+    setSoftkeys(pg.units, false, pg.hasMore);
+    status((shifted?'SHIFT: convert':'Attach unit')+' → '+currentCat+pageInfo);
+  }
+  saveSettings();
+}
+
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Softkeys ──────────────────────────────────────────────────────────────
+function setSoftkeys(labels, isCat, hasMore){
+  var ids=['skA','skB','skC','skD','skE','skF'];
+  for(var i=0;i<5;i++){
+    var btn=el(ids[i]);
+    var lbl=labels[i]||null;
+    btn.textContent=lbl||'—';
+    btn.disabled=!lbl;
+    btn.className=isCat?'cat-btn':'';
+    btn.onclick=lbl?(function(idx){return function(){softkey(idx);};})(i):null;
+  }
+  var sk5=el('skF');
+  if(hasMore){
+    sk5.textContent='→';
+    sk5.disabled=false;
+    sk5.className='next-btn';
+    sk5.onclick=function(){
+      catPage=(catPage+1)%Math.ceil(CAT_UNITS[currentCat].length/5);
+      render();
+    };
+  } else {
+    sk5.textContent='—'; sk5.disabled=true; sk5.className=''; sk5.onclick=null;
+  }
+}
+
+function softkey(idx){
+  if(unitsMode==='off') return;
+  if(unitsMode==='cat'){
+    currentCat=CATEGORIES[idx];
+    catPage=0;
+    unitsMode='units';
+    render();
+    return;
+  }
+  // unitsMode === 'units': attach or convert
+  var pg=getUnitPage(currentCat,catPage);
+  var unit=pg.units[idx];
+  if(!unit) return;
+  if(!commitInput()) return;
+  if(!stack.length){status('Stack empty',true);return;}
+  var x=stack[stack.length-1];
+  if(shifted){
+    var from=UNITS[x.unit],to=UNITS[unit];
+    if(!x.unit){status('No unit to convert',true);return;}
+    if(!from||!to){status('Unknown unit',true);return;}
+    if(from.dim!==to.dim){status('Incompatible dimensions',true);return;}
+    saveUndo();
+    var base=from.toK?from.toK(x.value):x.value*from.f;
+    x.value=to.fromK?to.fromK(base):base/to.f;
+    x.unit=unit;
+    status('Converted → '+unit);
+    shifted=false;
+  } else {
+    saveUndo();
+    x.unit=unit;
+    status('Attached '+unit);
+  }
+  render();
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────
+function digit(c){
+  if(c==='/'&&input.indexOf('/')!==-1) return;
+  if(c==='.'&&input.split('/').pop().indexOf('.')!==-1) return;
+  if(c===' '&&input.slice(-1)===' ') return;
+  input+=c; render();
+}
+function back(){input=input.replace(/\s$/,'').slice(0,-1);render();}
+
+function parseToken(s){
+  if(s.indexOf('/')!==-1){var p=s.split('/');var n=parseFloat(p[0]),d=parseFloat(p[1]);return d?n/d:NaN;}
+  return parseFloat(s);
+}
+function parseInput(s){
+  s=s.trim(); if(!s) return [];
+  var parts=s.split(/\s+/);
+  if(parts.length===2&&parts[1].indexOf('/')!==-1){
+    var w=parseFloat(parts[0]),f=parseToken(parts[1]);
+    if(!isFinite(w)||!isFinite(f)) return null;
+    return [{value:w+(w<0?-f:f),unit:null,decPlaces:null}];
+  }
+  var res=[];
+  for(var i=0;i<parts.length;i++){
+    var v=parseToken(parts[i]);
+    if(!isFinite(v)) return null;
+    res.push({value:v,unit:null,decPlaces:null});
+  }
+  return res;
+}
+function commitInput(){
+  if(!input.trim()) return true;
+  var vals=parseInput(input);
+  if(!vals){status('Invalid input',true);return false;}
+  for(var i=0;i<vals.length;i++) stack.push(vals[i]);
+  input=''; return true;
+}
+
+// ── Stack Ops ─────────────────────────────────────────────────────────────
+function handleEnter(){
+  saveUndo();
+  if(input.trim()){if(!commitInput())return;}
+  else if(stack.length){var t=stack[stack.length-1];stack.push({value:t.value,unit:t.unit,decPlaces:t.decPlaces});}
+  render();
+}
+function drop(){
+  saveUndo();
+  if(input.trim())input=''; else if(stack.length)stack.pop();
+  render();
+}
+function swap(){
+  if(!commitInput())return;
+  if(stack.length<2){status('Need ≥ 2 values',true);return;}
+  saveUndo();
+  var n=stack.length,tmp=stack[n-1];stack[n-1]=stack[n-2];stack[n-2]=tmp;
+  render();
+}
+function rollDown(){
+  if(!commitInput())return;
+  if(stack.length<2)return;
+  saveUndo(); stack.unshift(stack.pop()); render();
+}
+function clearAll(){
+  saveUndo();
+  stack=[];input='';unitsMode='off';shifted=false;currentCat=null;catPage=0;
+  status('');render();
+}
+
+// ── Arithmetic ────────────────────────────────────────────────────────────
+function operate(op){
+  if(!commitInput())return;
+  if(stack.length<2){status('Need ≥ 2 values',true);return;}
+  var x1=stack[stack.length-1],x2=stack[stack.length-2];
+  if(op==='div'&&x1.value===0){status('Division by zero',true);return;}
+  saveUndo();
+  var r={value:0,unit:null,decPlaces:null};
+  if(op==='plus'||op==='minus'){
+    var tb=function(u){return UNITS[u]?UNITS[u].f:1;};
+    if(x2.unit&&x1.unit){
+      var u1=UNITS[x2.unit],u2=UNITS[x1.unit];
+      if(!u1||!u2||u1.dim!==u2.dim){status('Incompatible units',true);return;}
+      var av=x2.value*tb(x2.unit),bv=x1.value*tb(x1.unit);
+      r.value=(op==='plus'?av+bv:av-bv)/tb(x2.unit);
+      r.unit=x2.unit;
+    } else {
+      r.value=op==='plus'?x2.value+x1.value:x2.value-x1.value;
+      r.unit=x2.unit||x1.unit;
+    }
+  } else if(op==='times'){r.value=x2.value*x1.value;}
+  else if(op==='div'){r.value=x2.value/x1.value;}
+  stack.splice(stack.length-2,2,r);
+  render();
+}
+
+// ── Trim Decimal ──────────────────────────────────────────────────────────
+function trimDecimal(){
+  if(displayMode!=='decimal'){status('Switch to decimal mode first',true);return;}
+  if(!stack.length){status('Stack empty',true);return;}
+  var x=stack[stack.length-1];
+  if(x.decPlaces===null||x.decPlaces===undefined){
+    var s=parseFloat(x.value.toPrecision(10)).toString();
+    var dot=s.indexOf('.');
+    x.decPlaces=dot===-1?0:s.length-dot-1;
+  }
+  if(x.decPlaces===0){status('Already a whole number',true);return;}
+  x.decPlaces--;
+  status('Trimmed to '+x.decPlaces+' decimal'+(x.decPlaces!==1?'s':''));
+  render();
+}
+
+// ── Mode Toggles ──────────────────────────────────────────────────────────
+function toggleDisplayMode(){
+  displayMode=displayMode==='fraction'?'decimal':'fraction';
+  stack.forEach(function(i){i.decPlaces=null;});
+  saveSettings();status('Display: '+displayMode);render();
+}
+function toggleCommas(){
+  commaMode=!commaMode;
+  el('commaBtn').style.boxShadow=commaMode?'0 0 12px #4da3ff88':'';
+  saveSettings();status('Commas: '+(commaMode?'on':'off'));render();
+}
+function toggleShift(){shifted=!shifted;render();}
+function toggleUnitsMode(){
+  if(unitsMode==='off'){
+    unitsMode=currentCat?'units':'cat';
+  } else if(unitsMode==='units'){
+    unitsMode='cat';
+  } else {
+    unitsMode='off'; shifted=false;
+  }
+  render();
+}
+
+// ── Paste Modal ───────────────────────────────────────────────────────────
+function openPasteModal(){
+  el('pasteInput').value='';
+  el('pasteModal').classList.add('show');
+  setTimeout(function(){el('pasteInput').focus();},100);
+}
+function closePasteModal(){el('pasteModal').classList.remove('show');}
+function confirmPaste(){
+  var text=el('pasteInput').value.trim();
+  closePasteModal();
+  if(!text){status('Nothing to paste',true);return;}
+  var vals=parseInput(text.replace(/,/g,''));
+  if(!vals||vals.length===0){status('Invalid paste value',true);return;}
+  saveUndo();
+  for(var i=0;i<vals.length;i++) stack.push(vals[i]);
+  status('Pasted: '+text);render();
+}
+el('pasteModal').addEventListener('click',function(e){if(e.target===el('pasteModal'))closePasteModal();});
+el('pasteInput').addEventListener('keydown',function(e){if(e.key==='Enter')confirmPaste();});
+
+// ── Keyboard ──────────────────────────────────────────────────────────────
+document.addEventListener('keydown',function(e){
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  if(el('pasteModal').classList.contains('show')) return;
+  switch(e.key){
+    case '0':case '1':case '2':case '3':case '4':
+    case '5':case '6':case '7':case '8':case '9': digit(e.key);break;
+    case '.': digit('.');break;
+    case '/': e.preventDefault();digit('/');break;
+    case ' ': e.preventDefault();digit(' ');break;
+    case 'Enter': handleEnter();break;
+    case 'Backspace': back();break;
+    case 'Escape': clearAll();break;
+    case '+': operate('plus');break;
+    case '-': operate('minus');break;
+    case '*': operate('times');break;
+    case 's':case 'S': swap();break;
+    case 'r':case 'R': rollDown();break;
+    case 'd':case 'D': drop();break;
+    case 'f':case 'F': toggleDisplayMode();break;
+    case 'c':case 'C': toggleCommas();break;
+    case 'u':case 'U': undo();break;
+    case 'p':case 'P': openPasteModal();break;
+    case 't':case 'T': trimDecimal();break;
+  }
+});
+
+// ── Offline Detection ─────────────────────────────────────────────────────
+function updateOffline(){el('offlineBadge').classList.toggle('show',!navigator.onLine);}
+window.addEventListener('online',updateOffline);
+window.addEventListener('offline',updateOffline);
+updateOffline();
+
+// ── PWA / Service Worker ──────────────────────────────────────────────────
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js', {scope: './'})
+    .catch(function(e){ console.warn('SW registration failed:', e); });
+}
+
+// ── Persist Settings ──────────────────────────────────────────────────────
+function saveSettings(){
+  try{
+    localStorage.setItem('rpn_precision',el('precision').value);
+    localStorage.setItem('rpn_roundMode',el('roundMode').value);
+    localStorage.setItem('rpn_displayMode',displayMode);
+    localStorage.setItem('rpn_commaMode',commaMode?'1':'0');
+    localStorage.setItem('rpn_stack',JSON.stringify(stack));
+    if(currentCat) localStorage.setItem('rpn_lastCat',currentCat);
+  }catch(e){}
+}
+function loadSettings(){
+  try{
+    var p=localStorage.getItem('rpn_precision');
+    var r=localStorage.getItem('rpn_roundMode');
+    var d=localStorage.getItem('rpn_displayMode');
+    var c=localStorage.getItem('rpn_commaMode');
+    var s=localStorage.getItem('rpn_stack');
+    var cat=localStorage.getItem('rpn_lastCat');
+    if(p) el('precision').value=p;
+    if(r) el('roundMode').value=r;
+    if(d) displayMode=d;
+    if(c!==null){commaMode=c==='1';if(commaMode)el('commaBtn').style.boxShadow='0 0 12px #4da3ff88';}
+    if(s){var parsed=JSON.parse(s);if(Array.isArray(parsed))stack=parsed;}
+    if(cat) currentCat=cat;
+  }catch(e){}
+}
+
+document.querySelectorAll('.key').forEach(function(btn){
+  btn.addEventListener('touchstart',function(e){e.preventDefault();btn.click();},{passive:false});
+});
+
+loadSettings();
+render();
+</script>
+</body>
+</html>
