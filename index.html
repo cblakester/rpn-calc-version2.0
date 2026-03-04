@@ -622,10 +622,10 @@ function digit(c){
   if(c==='.'&&token.indexOf('.')!==-1)return;
   if(c===' '&&input.slice(-1)===' ')return;
 
-  // if input is a complete mixed number and user types a digit, auto-push and start fresh
-  if(c!=' '&&c!='.'&&c!='/'&&isCompleteMixedNumber(input)){
+  // auto-push on SPACE if input is already a complete mixed number
+  if(c===' '&&isCompleteMixedNumber(input)){
     if(!commitInput())return;
-    input=c;render();return;
+    render();return;
   }
 
   input+=c;render();
