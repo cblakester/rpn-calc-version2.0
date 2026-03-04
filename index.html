@@ -317,7 +317,8 @@ function render(){
     html+='<div class="'+cls+'"><span class="lbl">X'+lvl+'</span><span>'+val+'</span></div>';
   }
   el('stackDisplay').innerHTML=html;
-  el('inputLine').innerHTML=(input?escHtml(input):'')+' <span class="cursor">▎</span>';
+  var displayInput = input.replace(/ /g, '\u00B7'); // show spaces as · 
+  el('inputLine').innerHTML=(input?escHtml(displayInput):'')+' <span class="cursor">▎</span>';
   el('shiftBtn').classList.toggle('active',shifted);
   el('unitsBtn').classList.toggle('units-active',unitsMode!=='off');
 
