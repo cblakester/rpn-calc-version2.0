@@ -169,24 +169,30 @@ select{width:100%;padding:10px;border-radius:8px;border:none;background:linear-g
   </div>
 </div>
 
-<!-- Add Currency Modal -->
-<div id="addCurrModal" class="modal-overlay">
+<!-- Currency Edit Modal -->
+<div id="editCurrModal" class="modal-overlay">
   <div class="modal-box">
-    <p>Enter a 3-letter currency code (e.g. MXN, CHF, BTC)</p>
-    <input id="addCurrInput" class="modal-input" type="text" maxlength="4" placeholder="USD" style="text-transform:uppercase;"/>
-    <div class="modal-btns">
-      <button class="btn-ok"     onclick="confirmAddCurrency()">Add</button>
-      <button class="btn-cancel" onclick="closeAddCurrModal()">Cancel</button>
+    <div id="editCurrMain">
+      <p>What would you like to do?</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <button class="btn-ok"     onclick="showAddCurr()">+ Add</button>
+        <button class="btn-cancel" onclick="showDelCurr()">− Remove</button>
+      </div>
+      <button onclick="closeEditCurrModal()" style="width:100%;padding:10px;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer;background:#444;color:white;">Cancel</button>
     </div>
-  </div>
-</div>
-
-<!-- Delete Currency Modal -->
-<div id="delCurrModal" class="modal-overlay">
-  <div class="modal-box">
-    <p>Tap a currency to remove it from your list</p>
-    <div id="delCurrList" class="del-list"></div>
-    <button class="btn-cancel" style="width:100%;padding:13px;border-radius:8px;border:none;font-size:15px;font-weight:700;cursor:pointer;" onclick="closeDelCurrModal()">Close</button>
+    <div id="editCurrAdd" style="display:none;">
+      <p>Enter a 3-letter currency code (e.g. MXN, CHF)</p>
+      <input id="addCurrInput" class="modal-input" type="text" maxlength="4" placeholder="USD" style="text-transform:uppercase;"/>
+      <div class="modal-btns">
+        <button class="btn-ok"     onclick="confirmAddCurrency()">Add</button>
+        <button class="btn-cancel" onclick="showEditMain()">Back</button>
+      </div>
+    </div>
+    <div id="editCurrDel" style="display:none;">
+      <p>Tap a currency to remove it</p>
+      <div id="delCurrList" class="del-list"></div>
+      <button onclick="showEditMain()" style="width:100%;padding:10px;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer;background:#444;color:white;">Back</button>
+    </div>
   </div>
 </div>
 
@@ -196,6 +202,7 @@ var stack=[], lastStack=null, input='';
 var unitsMode='off'; // 'off'|'cat'|'units'
 var shifted=false, currentCat=null, catPage=0, catPickerPage=0;
 var displayMode='fraction', commaMode=false;
+var acLastTap=0; // for double-tap AC detection
 
 // ── Unit Categories ───────────────────────────────────────────────────────
 var CATEGORIES=['Length','Area','Volume','Time','Speed','Mass','Power','Pressure','Temp','Currency'];
@@ -240,7 +247,19 @@ var UNITS={
 
 // ── Currency ──────────────────────────────────────────────────────────────
 var DEFAULT_CURRENCIES=['USD','EUR','GBP','CAD','AUD','JPY'];
-var fxRates={}, fxTimestamp=null, fxStatus='';
+var fxRates={}, fxTimestamp=null;
+var cryptoRates={}, cryptoTimestamp=null; // rates in USD
+var fxStatus='';
+
+// Map ticker → CoinGecko coin ID
+var CRYPTO_IDS={
+  'BTC':'bitcoin','ETH':'ethereum','SOL':'solana','BNB':'binancecoin',
+  'XRP':'ripple','ADA':'cardano','DOGE':'dogecoin','DOT':'polkadot',
+  'MATIC':'matic-network','LTC':'litecoin','LINK':'chainlink',
+  'UNI':'uniswap','AVAX':'avalanche-2','ATOM':'cosmos','XLM':'stellar'
+};
+
+function isCrypto(code){ return !!CRYPTO_IDS[code.toUpperCase()]; }
 
 function loadCurrencies(){
   try{
@@ -257,38 +276,101 @@ function loadFxRates(){
     var r=localStorage.getItem('rpn_fxRates');
     var t=localStorage.getItem('rpn_fxTime');
     if(r){fxRates=JSON.parse(r);fxTimestamp=t?new Date(t):null;}
+    var cr=localStorage.getItem('rpn_cryptoRates');
+    var ct=localStorage.getItem('rpn_cryptoTime');
+    if(cr){cryptoRates=JSON.parse(cr);cryptoTimestamp=ct?new Date(ct):null;}
   }catch(e){}
 }
 function saveFxRates(){
   try{
     localStorage.setItem('rpn_fxRates',JSON.stringify(fxRates));
     localStorage.setItem('rpn_fxTime',fxTimestamp?fxTimestamp.toISOString():'');
+    localStorage.setItem('rpn_cryptoRates',JSON.stringify(cryptoRates));
+    localStorage.setItem('rpn_cryptoTime',cryptoTimestamp?cryptoTimestamp.toISOString():'');
   }catch(e){}
 }
+
 function fetchFxRates(){
   if(!navigator.onLine){fxStatus='Offline — cached rates';render();return;}
   fxStatus='Fetching rates…';render();
+
+  // fetch fiat
+  var fiatDone=false, cryptoDone=false;
+  function checkDone(){
+    if(fiatDone&&cryptoDone){
+      saveFxRates();
+      var ft=fxTimestamp?fxTimestamp.toLocaleTimeString():'?';
+      fxStatus='Updated '+ft;
+      render();
+    }
+  }
+
   fetch('https://open.er-api.com/v6/latest/USD')
     .then(function(r){return r.json();})
     .then(function(data){
-      if(data&&data.rates){
-        fxRates=data.rates;fxTimestamp=new Date();saveFxRates();
-        fxStatus='Updated '+fxTimestamp.toLocaleTimeString();
-      } else {fxStatus='Fetch failed';}
-      render();
+      if(data&&data.rates){fxRates=data.rates;fxTimestamp=new Date();}
+      fiatDone=true;checkDone();
     })
-    .catch(function(){fxStatus='Offline — cached rates';render();});
+    .catch(function(){fiatDone=true;checkDone();});
+
+  // fetch crypto — get all known coins in one call priced in USD
+  var ids=Object.values(CRYPTO_IDS).join(',');
+  fetch('https://api.coingecko.com/api/v3/simple/price?ids='+ids+'&vs_currencies=usd')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      // build cryptoRates keyed by ticker symbol, value = price in USD
+      Object.keys(CRYPTO_IDS).forEach(function(ticker){
+        var cgId=CRYPTO_IDS[ticker];
+        if(data[cgId]&&data[cgId].usd){
+          cryptoRates[ticker]=data[cgId].usd;
+        }
+      });
+      cryptoTimestamp=new Date();
+      cryptoDone=true;checkDone();
+    })
+    .catch(function(){cryptoDone=true;checkDone();});
 }
-function convertCurrency(amt,from,to){
-  var rF=fxRates[from],rT=fxRates[to];
-  if(!rF||!rT){status('No rate for '+from+' or '+to,true);return null;}
-  return amt/rF*rT;
+
+// Convert between any combination of fiat and crypto
+// All conversions go through USD as the common base
+function convertCurrency(amt, fromCode, toCode){
+  fromCode=fromCode.toUpperCase(); toCode=toCode.toUpperCase();
+
+  // get USD value of 'from'
+  var usdAmt;
+  if(isCrypto(fromCode)){
+    var rate=cryptoRates[fromCode];
+    if(!rate){status('No rate for '+fromCode,true);return null;}
+    usdAmt=amt*rate; // crypto price is already in USD
+  } else {
+    var rF=fxRates[fromCode];
+    if(!rF){status('No rate for '+fromCode,true);return null;}
+    usdAmt=amt/rF; // fxRates are relative to USD
+  }
+
+  // convert USD to 'to'
+  if(isCrypto(toCode)){
+    var toRate=cryptoRates[toCode];
+    if(!toRate){status('No rate for '+toCode,true);return null;}
+    return usdAmt/toRate;
+  } else {
+    var rT=fxRates[toCode];
+    if(!rT){status('No rate for '+toCode,true);return null;}
+    return usdAmt*rT;
+  }
 }
+
 function addCurrency(code){
   code=code.toUpperCase().trim();
   if(!code)return;
   if(CAT_UNITS.Currency.indexOf(code)!==-1){status(code+' already in list',true);return;}
-  CAT_UNITS.Currency.push(code);saveCurrencies();status('Added '+code);render();
+  // warn if not a known fiat or crypto
+  if(!fxRates[code]&&!isCrypto(code)){
+    status(code+' not found in rates — added anyway',false);
+  } else {
+    status('Added '+code);
+  }
+  CAT_UNITS.Currency.push(code);saveCurrencies();render();
 }
 function delCurrency(code){
   var idx=CAT_UNITS.Currency.indexOf(code);
@@ -384,25 +466,50 @@ function renderSoftkeys(){
     if(catPage>=tp)catPage=Math.max(0,tp-1);
     var cs=catPage*4;
     var slice=all.slice(cs,cs+4);
+    // slots 0-3: currencies
     for(var k=0;k<4;k++){
       var cb=el(ids[k]);
       var cu=slice[k]||null;
       cb.textContent=cu||'—';cb.disabled=!cu;cb.className='';
       cb.onclick=cu?(function(ix){return function(){tapCurrency(ix);};})(k):null;
     }
-    // slot 4: +ADD
-    var skA=el('sk4');
-    skA.textContent='+ADD';skA.disabled=false;skA.className='add-btn';skA.style.fontSize='11px';
-    skA.onclick=openAddCurrModal;
-    // slot 5: → if more pages, else −DEL
-    var skD=el('sk5');
+    // slot 4: → if multiple pages, else dimmed
+    var skN=el('sk4');
     if(tp>1){
-      skD.textContent='→';skD.disabled=false;skD.className='next-btn';skD.style.fontSize='16px';
-      skD.onclick=function(){catPage=(catPage+1)%tp;render();};
+      skN.textContent='→';skN.disabled=false;skN.className='next-btn';skN.style.fontSize='16px';
+      skN.onclick=function(){catPage=(catPage+1)%tp;render();};
     } else {
-      skD.textContent='−DEL';skD.disabled=all.length===0;skD.className='del-btn';skD.style.fontSize='11px';
-      skD.onclick=openDelCurrModal;
+      skN.textContent='—';skN.disabled=true;skN.className='';skN.style.fontSize='';skN.onclick=null;
     }
+    // slot 5: +ADD always visible; long-press not easy on mobile so we use a small combined button
+    // Actually show +ADD in slot 4 when single page, −DEL in slot 5 always
+    // Redo: slot 4=+ADD always, slot 5=−DEL always, paging handled by → replacing slot 3 when needed
+    // Simplest clean fix: 3 currency slots + → (if needed) + +ADD + −DEL
+    // Reset slots 0-2 for currencies, slot 3 for → or empty, slot 4=+ADD, slot 5=−DEL
+    for(var r=0;r<6;r++){
+      var rb=el(ids[r]);rb.textContent='—';rb.disabled=true;rb.className='';rb.style.fontSize='';rb.onclick=null;
+    }
+    var perPage=tp>1?3:4;
+    var tp2=Math.ceil(all.length/perPage)||1;
+    if(catPage>=tp2)catPage=Math.max(0,tp2-1);
+    var cs2=catPage*perPage;
+    var slice2=all.slice(cs2,cs2+perPage);
+    for(var k2=0;k2<perPage;k2++){
+      var cb2=el(ids[k2]);
+      var cu2=slice2[k2]||null;
+      cb2.textContent=cu2||'—';cb2.disabled=!cu2;cb2.className='';
+      cb2.onclick=cu2?(function(ix){return function(){tapCurrency(ix);};})(k2):null;
+    }
+    // slot 4: → if multiple pages, else empty
+    var skArrow=el('sk4');
+    if(tp2>1){
+      skArrow.textContent='→';skArrow.disabled=false;skArrow.className='next-btn';skArrow.style.fontSize='16px';
+      skArrow.onclick=function(){catPage=(catPage+1)%tp2;render();};
+    }
+    // slot 5: EDIT always
+    var skEdit=el('sk5');
+    skEdit.textContent='EDIT';skEdit.disabled=false;skEdit.className='add-btn';skEdit.style.fontSize='11px';
+    skEdit.onclick=openEditCurrModal;
   } else {
     // Normal category
     var all2=CAT_UNITS[currentCat];
@@ -505,8 +612,10 @@ function render(){
 
 // ── Input ─────────────────────────────────────────────────────────────────
 function digit(c){
-  if(c==='/'&&input.indexOf('/')!==-1)return;
-  if(c==='.'&&input.split('/').pop().indexOf('.')!==-1)return;
+  // current token = everything after the last space
+  var token=input.split(' ').pop();
+  if(c==='/'&&token.indexOf('/')!==-1)return;
+  if(c==='.'&&token.indexOf('.')!==-1)return;
   if(c===' '&&input.slice(-1)===' ')return;
   input+=c;render();
 }
@@ -556,8 +665,19 @@ function rollDown(){
   saveUndo();stack.unshift(stack.pop());render();
 }
 function clearAll(){
-  saveUndo();stack=[];input='';unitsMode='off';shifted=false;
-  currentCat=null;catPage=0;catPickerPage=0;status('');render();
+  var now=Date.now();
+  var doubleTap=now-acLastTap<400;
+  acLastTap=now;
+  saveUndo();
+  stack=[];input='';
+  if(doubleTap){
+    // full reset including units
+    unitsMode='off';shifted=false;currentCat=null;catPage=0;catPickerPage=0;
+    status('Full reset');
+  } else {
+    status('Stack cleared');
+  }
+  render();
 }
 
 // ── Arithmetic ────────────────────────────────────────────────────────────
@@ -635,39 +755,44 @@ function confirmPaste(){
 el('pasteModal').addEventListener('click',function(e){if(e.target===el('pasteModal'))closePasteModal();});
 el('pasteInput').addEventListener('keydown',function(e){if(e.key==='Enter')confirmPaste();});
 
-// ── Currency Modals ───────────────────────────────────────────────────────
-function openAddCurrModal(){
+// ── Currency Edit Modal ───────────────────────────────────────────────────
+function openEditCurrModal(){ showEditMain(); el('editCurrModal').classList.add('show'); }
+function closeEditCurrModal(){ el('editCurrModal').classList.remove('show'); }
+function showEditMain(){
+  el('editCurrMain').style.display='';
+  el('editCurrAdd').style.display='none';
+  el('editCurrDel').style.display='none';
+}
+function showAddCurr(){
+  el('editCurrMain').style.display='none';
+  el('editCurrAdd').style.display='';
   el('addCurrInput').value='';
-  el('addCurrModal').classList.add('show');
   setTimeout(function(){el('addCurrInput').focus();},100);
 }
-function closeAddCurrModal(){el('addCurrModal').classList.remove('show');}
-function confirmAddCurrency(){
-  var code=el('addCurrInput').value.toUpperCase().trim();
-  closeAddCurrModal();
-  if(code)addCurrency(code);
-}
-el('addCurrModal').addEventListener('click',function(e){if(e.target===el('addCurrModal'))closeAddCurrModal();});
-el('addCurrInput').addEventListener('keydown',function(e){if(e.key==='Enter')confirmAddCurrency();});
-
-function openDelCurrModal(){
-  var list=el('delCurrList');list.innerHTML='';
+function showDelCurr(){
+  el('editCurrMain').style.display='none';
+  el('editCurrDel').style.display='';
+  var list=el('delCurrList'); list.innerHTML='';
   CAT_UNITS.Currency.forEach(function(code){
     var btn=document.createElement('button');
     btn.textContent=code;
-    btn.onclick=function(){delCurrency(code);closeDelCurrModal();};
+    btn.onclick=function(){delCurrency(code);closeEditCurrModal();};
     list.appendChild(btn);
   });
-  el('delCurrModal').classList.add('show');
 }
-function closeDelCurrModal(){el('delCurrModal').classList.remove('show');}
-el('delCurrModal').addEventListener('click',function(e){if(e.target===el('delCurrModal'))closeDelCurrModal();});
+function confirmAddCurrency(){
+  var code=el('addCurrInput').value.toUpperCase().trim();
+  closeEditCurrModal();
+  if(code)addCurrency(code);
+}
+el('editCurrModal').addEventListener('click',function(e){if(e.target===el('editCurrModal'))closeEditCurrModal();});
+el('addCurrInput').addEventListener('keydown',function(e){if(e.key==='Enter')confirmAddCurrency();});
 
 // ── Keyboard ──────────────────────────────────────────────────────────────
 document.addEventListener('keydown',function(e){
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(el('pasteModal').classList.contains('show'))return;
-  if(el('addCurrModal').classList.contains('show'))return;
+  if(el('editCurrModal').classList.contains('show'))return;
   switch(e.key){
     case '0':case '1':case '2':case '3':case '4':
     case '5':case '6':case '7':case '8':case '9':digit(e.key);break;
