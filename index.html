@@ -46,8 +46,7 @@ body{
 }
 .softkeys button.cat-btn{background:linear-gradient(#80cbc4,#00897b);font-size:10px;}
 .softkeys button.next-btn{background:linear-gradient(#ffb74d,#ef6c00);}
-.softkeys button.add-btn{background:linear-gradient(#66bb6a,#2e7d32);font-size:11px;}
-.softkeys button.del-btn{background:linear-gradient(#ff7b7b,#e53935);font-size:11px;}
+.softkeys button.edit-btn{background:linear-gradient(#66bb6a,#2e7d32);font-size:11px;}
 .softkeys button:disabled{opacity:0.25;cursor:default;}
 .softkeys button:not(:disabled):active{transform:scale(0.95);}
 .controls{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:10px;align-items:stretch;}
@@ -76,8 +75,9 @@ select{width:100%;padding:10px;border-radius:8px;border:none;background:linear-g
 .modal-input{width:100%;padding:12px;border-radius:8px;border:2px solid var(--accent);background:#1e2126;color:white;font-size:22px;font-weight:600;outline:none;margin-bottom:14px;text-align:center;}
 .modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .modal-btns button{padding:13px;border-radius:8px;border:none;font-size:15px;font-weight:700;cursor:pointer;}
-.btn-ok {background:linear-gradient(#5dffb5,#00c97c);color:#003d26;}
+.btn-ok{background:linear-gradient(#5dffb5,#00c97c);color:#003d26;}
 .btn-cancel{background:linear-gradient(#ff7b7b,#e53935);color:white;}
+.btn-grey{background:#444;color:white;width:100%;padding:10px;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;}
 .del-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
 .del-list button{padding:10px 14px;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer;background:linear-gradient(#ff7b7b,#e53935);color:white;}
 </style>
@@ -118,18 +118,15 @@ select{width:100%;padding:10px;border-radius:8px;border:none;background:linear-g
       <button class="key op"     id="commaBtn" onclick="toggleCommas()">1,000</button>
       <button class="key op"     style="font-size:11px;" onclick="toggleDisplayMode()">DEC/FRAC</button>
       <button class="key danger" onclick="back()">⌫</button>
-
       <button class="key enter"  onclick="handleEnter()">ENTER</button>
       <button class="key stack"  onclick="swap()">SWAP</button>
       <button class="key stack"  onclick="rollDown()">R↓</button>
       <button class="key danger" onclick="drop()">DROP</button>
-
       <button class="key op"     id="unitsBtn" onclick="toggleUnitsMode()">UNITS</button>
       <button class="key"        onclick="digit('7')">7</button>
       <button class="key"        onclick="digit('8')">8</button>
       <button class="key"        onclick="digit('9')">9</button>
       <button class="key op"     onclick="operate('div')">÷</button>
-
       <button class="key shift"  id="shiftBtn" onclick="toggleShift()">
         <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
           <line x1="22" y1="15" x2="22" y2="6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
@@ -141,13 +138,11 @@ select{width:100%;padding:10px;border-radius:8px;border:none;background:linear-g
       <button class="key"        onclick="digit('5')">5</button>
       <button class="key"        onclick="digit('6')">6</button>
       <button class="key op"     onclick="operate('times')">×</button>
-
       <button class="key op"     onclick="openPasteModal()">PASTE</button>
       <button class="key"        onclick="digit('1')">1</button>
       <button class="key"        onclick="digit('2')">2</button>
       <button class="key"        onclick="digit('3')">3</button>
       <button class="key op"     onclick="operate('minus')">−</button>
-
       <button class="key op"     onclick="digit('/')">／</button>
       <button class="key"        onclick="digit('0')">0</button>
       <button class="key"        onclick="digit('.')">.</button>
@@ -174,15 +169,15 @@ select{width:100%;padding:10px;border-radius:8px;border:none;background:linear-g
   <div class="modal-box">
     <div id="editCurrMain">
       <p>What would you like to do?</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div class="modal-btns" style="margin-bottom:10px;">
         <button class="btn-ok"     onclick="showAddCurr()">+ Add</button>
         <button class="btn-cancel" onclick="showDelCurr()">− Remove</button>
       </div>
-      <button onclick="closeEditCurrModal()" style="width:100%;padding:10px;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer;background:#444;color:white;">Cancel</button>
+      <button class="btn-grey" onclick="closeEditCurrModal()">Cancel</button>
     </div>
     <div id="editCurrAdd" style="display:none;">
-      <p>Enter a 3-letter currency code (e.g. MXN, CHF)</p>
-      <input id="addCurrInput" class="modal-input" type="text" maxlength="4" placeholder="USD" style="text-transform:uppercase;"/>
+      <p>Enter a 3-letter currency code (e.g. MXN, CHF, BTC)</p>
+      <input id="addCurrInput" class="modal-input" type="text" maxlength="6" placeholder="USD" style="text-transform:uppercase;"/>
       <div class="modal-btns">
         <button class="btn-ok"     onclick="confirmAddCurrency()">Add</button>
         <button class="btn-cancel" onclick="showEditMain()">Back</button>
@@ -191,7 +186,7 @@ select{width:100%;padding:10px;border-radius:8px;border:none;background:linear-g
     <div id="editCurrDel" style="display:none;">
       <p>Tap a currency to remove it</p>
       <div id="delCurrList" class="del-list"></div>
-      <button onclick="showEditMain()" style="width:100%;padding:10px;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer;background:#444;color:white;">Back</button>
+      <button class="btn-grey" onclick="showEditMain()">Back</button>
     </div>
   </div>
 </div>
@@ -199,14 +194,13 @@ select{width:100%;padding:10px;border-radius:8px;border:none;background:linear-g
 <script>
 // ── State ─────────────────────────────────────────────────────────────────
 var stack=[], lastStack=null, input='';
-var unitsMode='off'; // 'off'|'cat'|'units'
+var unitsMode='off';
 var shifted=false, currentCat=null, catPage=0, catPickerPage=0;
 var displayMode='fraction', commaMode=false;
-var acLastTap=0; // for double-tap AC detection
+var acLastTap=0;
 
-// ── Unit Categories ───────────────────────────────────────────────────────
+// ── Categories ────────────────────────────────────────────────────────────
 var CATEGORIES=['Length','Area','Volume','Time','Speed','Mass','Power','Pressure','Temp','Currency'];
-
 var CAT_UNITS={
   Length:   ['in','ft','yd','mi','mm','cm','m','km'],
   Area:     ['in²','ft²','mi²','mm²','cm²','m²'],
@@ -217,7 +211,7 @@ var CAT_UNITS={
   Power:    ['hp','kW','W','BTU/hr','ft·lb/s'],
   Pressure: ['psi','bar','atm','Pa','kPa','mmHg'],
   Temp:     ['°F','°C','K'],
-  Currency: [] // dynamic
+  Currency: []
 };
 
 var UNITS={
@@ -247,24 +241,28 @@ var UNITS={
 
 // ── Currency ──────────────────────────────────────────────────────────────
 var DEFAULT_CURRENCIES=['USD','EUR','GBP','CAD','AUD','JPY'];
-var fxRates={}, fxTimestamp=null;
-var cryptoRates={}, cryptoTimestamp=null; // rates in USD
-var fxStatus='';
-
-// Map ticker → CoinGecko coin ID
+var fxRates={}, fxTimestamp=null, cryptoRates={}, fxStatus='';
 var CRYPTO_IDS={
   'BTC':'bitcoin','ETH':'ethereum','SOL':'solana','BNB':'binancecoin',
-  'XRP':'ripple','ADA':'cardano','DOGE':'dogecoin','DOT':'polkadot',
-  'MATIC':'matic-network','LTC':'litecoin','LINK':'chainlink',
-  'UNI':'uniswap','AVAX':'avalanche-2','ATOM':'cosmos','XLM':'stellar'
+  'XRP':'ripple','ADA':'cardano','DOGE':'dogecoin','LTC':'litecoin',
+  'LINK':'chainlink','AVAX':'avalanche-2','ATOM':'cosmos','XLM':'stellar'
 };
-
-function isCrypto(code){ return !!CRYPTO_IDS[code.toUpperCase()]; }
+function isCrypto(c){return !!CRYPTO_IDS[c.toUpperCase()];}
 
 function loadCurrencies(){
   try{
     var s=localStorage.getItem('rpn_currencies');
-    if(s){var a=JSON.parse(s);if(Array.isArray(a)&&a.length){CAT_UNITS.Currency=a;return;}}
+    if(s){
+      var a=JSON.parse(s);
+      if(Array.isArray(a)&&a.length){
+        var seen={};
+        CAT_UNITS.Currency=a.filter(function(c){
+          if(!c||seen[c])return false;
+          seen[c]=true;return true;
+        });
+        return;
+      }
+    }
   }catch(e){}
   CAT_UNITS.Currency=DEFAULT_CURRENCIES.slice();
 }
@@ -274,114 +272,73 @@ function saveCurrencies(){
 function loadFxRates(){
   try{
     var r=localStorage.getItem('rpn_fxRates');
-    var t=localStorage.getItem('rpn_fxTime');
-    if(r){fxRates=JSON.parse(r);fxTimestamp=t?new Date(t):null;}
+    if(r)fxRates=JSON.parse(r);
     var cr=localStorage.getItem('rpn_cryptoRates');
-    var ct=localStorage.getItem('rpn_cryptoTime');
-    if(cr){cryptoRates=JSON.parse(cr);cryptoTimestamp=ct?new Date(ct):null;}
+    if(cr)cryptoRates=JSON.parse(cr);
+    var t=localStorage.getItem('rpn_fxTime');
+    if(t)fxTimestamp=new Date(t);
   }catch(e){}
 }
 function saveFxRates(){
   try{
     localStorage.setItem('rpn_fxRates',JSON.stringify(fxRates));
-    localStorage.setItem('rpn_fxTime',fxTimestamp?fxTimestamp.toISOString():'');
     localStorage.setItem('rpn_cryptoRates',JSON.stringify(cryptoRates));
-    localStorage.setItem('rpn_cryptoTime',cryptoTimestamp?cryptoTimestamp.toISOString():'');
+    if(fxTimestamp)localStorage.setItem('rpn_fxTime',fxTimestamp.toISOString());
   }catch(e){}
 }
-
 function fetchFxRates(){
   if(!navigator.onLine){fxStatus='Offline — cached rates';render();return;}
-  fxStatus='Fetching rates…';render();
-
-  // fetch fiat
-  var fiatDone=false, cryptoDone=false;
-  function checkDone(){
-    if(fiatDone&&cryptoDone){
-      saveFxRates();
-      var ft=fxTimestamp?fxTimestamp.toLocaleTimeString():'?';
-      fxStatus='Updated '+ft;
-      render();
-    }
+  fxStatus='Fetching…';render();
+  var fiatOk=false,cryptoOk=false;
+  function done(){
+    if(!fiatOk||!cryptoOk)return;
+    saveFxRates();
+    fxStatus='Updated '+(fxTimestamp?fxTimestamp.toLocaleTimeString():'');
+    render();
   }
-
   fetch('https://open.er-api.com/v6/latest/USD')
     .then(function(r){return r.json();})
-    .then(function(data){
-      if(data&&data.rates){fxRates=data.rates;fxTimestamp=new Date();}
-      fiatDone=true;checkDone();
-    })
-    .catch(function(){fiatDone=true;checkDone();});
-
-  // fetch crypto — get all known coins in one call priced in USD
+    .then(function(d){if(d&&d.rates){fxRates=d.rates;fxTimestamp=new Date();}fiatOk=true;done();})
+    .catch(function(){fiatOk=true;done();});
   var ids=Object.values(CRYPTO_IDS).join(',');
   fetch('https://api.coingecko.com/api/v3/simple/price?ids='+ids+'&vs_currencies=usd')
     .then(function(r){return r.json();})
-    .then(function(data){
-      // build cryptoRates keyed by ticker symbol, value = price in USD
-      Object.keys(CRYPTO_IDS).forEach(function(ticker){
-        var cgId=CRYPTO_IDS[ticker];
-        if(data[cgId]&&data[cgId].usd){
-          cryptoRates[ticker]=data[cgId].usd;
-        }
+    .then(function(d){
+      Object.keys(CRYPTO_IDS).forEach(function(t){
+        var id=CRYPTO_IDS[t];
+        if(d[id]&&d[id].usd)cryptoRates[t]=d[id].usd;
       });
-      cryptoTimestamp=new Date();
-      cryptoDone=true;checkDone();
+      cryptoOk=true;done();
     })
-    .catch(function(){cryptoDone=true;checkDone();});
+    .catch(function(){cryptoOk=true;done();});
 }
-
-// Convert between any combination of fiat and crypto
-// All conversions go through USD as the common base
-function convertCurrency(amt, fromCode, toCode){
-  fromCode=fromCode.toUpperCase(); toCode=toCode.toUpperCase();
-
-  // get USD value of 'from'
-  var usdAmt;
-  if(isCrypto(fromCode)){
-    var rate=cryptoRates[fromCode];
-    if(!rate){status('No rate for '+fromCode,true);return null;}
-    usdAmt=amt*rate; // crypto price is already in USD
-  } else {
-    var rF=fxRates[fromCode];
-    if(!rF){status('No rate for '+fromCode,true);return null;}
-    usdAmt=amt/rF; // fxRates are relative to USD
+function convertCurrency(amt,from,to){
+  from=from.toUpperCase();to=to.toUpperCase();
+  var usd;
+  if(isCrypto(from)){
+    if(!cryptoRates[from]){status('No rate for '+from,true);return null;}
+    usd=amt*cryptoRates[from];
+  }else{
+    if(!fxRates[from]){status('No rate for '+from,true);return null;}
+    usd=amt/fxRates[from];
   }
-
-  // convert USD to 'to'
-  if(isCrypto(toCode)){
-    var toRate=cryptoRates[toCode];
-    if(!toRate){status('No rate for '+toCode,true);return null;}
-    return usdAmt/toRate;
-  } else {
-    var rT=fxRates[toCode];
-    if(!rT){status('No rate for '+toCode,true);return null;}
-    return usdAmt*rT;
+  if(isCrypto(to)){
+    if(!cryptoRates[to]){status('No rate for '+to,true);return null;}
+    return usd/cryptoRates[to];
+  }else{
+    if(!fxRates[to]){status('No rate for '+to,true);return null;}
+    return usd*fxRates[to];
   }
-}
-
-function addCurrency(code){
-  code=code.toUpperCase().trim();
-  if(!code)return;
-  if(CAT_UNITS.Currency.indexOf(code)!==-1){status(code+' already in list',true);return;}
-  if(!fxRates[code]&&!isCrypto(code)){
-    status(code+' not found in rates — added anyway',false);
-  } else {
-    status('Added '+code);
-  }
-  CAT_UNITS.Currency.push(code);
-  saveCurrencies();
-  // jump to last page so new currency is visible
-  catPage=Math.ceil(CAT_UNITS.Currency.length/3)-1;
-  render();
 }
 function delCurrency(code){
   var idx=CAT_UNITS.Currency.indexOf(code);
   if(idx===-1)return;
-  CAT_UNITS.Currency.splice(idx,1);saveCurrencies();
-  var tp=Math.ceil(CAT_UNITS.Currency.length/4)||1;
-  if(catPage>=tp)catPage=Math.max(0,tp-1);
-  status('Removed '+code);render();
+  CAT_UNITS.Currency.splice(idx,1);
+  saveCurrencies();
+  var maxPage=Math.max(0,Math.ceil(CAT_UNITS.Currency.length/3)-1);
+  if(catPage>maxPage)catPage=maxPage;
+  status('Removed '+code);
+  render();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -390,7 +347,7 @@ function gcd(a,b){return b?gcd(b,a%b):a;}
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 // ── Undo ──────────────────────────────────────────────────────────────────
-function saveUndo(){lastStack=stack.map(function(i){return {value:i.value,unit:i.unit,decPlaces:i.decPlaces};});}
+function saveUndo(){lastStack=stack.map(function(i){return{value:i.value,unit:i.unit,decPlaces:i.decPlaces};});}
 function undo(){
   if(!lastStack){status('Nothing to undo',true);return;}
   stack=lastStack;lastStack=null;input='';status('Undone');render();
@@ -436,112 +393,97 @@ function status(msg,isErr){
 }
 
 // ── Softkeys ──────────────────────────────────────────────────────────────
-function renderSoftkeys(){
-  var ids=['sk0','sk1','sk2','sk3','sk4','sk5'];
-  // reset all
+function sk(i){return el('sk'+i);}
+
+function clearSoftkeys(){
   for(var i=0;i<6;i++){
-    var b=el(ids[i]);
-    b.textContent='—';b.disabled=true;b.className='';b.onclick=null;b.style.fontSize='';
+    var b=sk(i);b.textContent='—';b.disabled=true;
+    b.className='';b.style.fontSize='';b.onclick=null;
   }
+}
+
+function setSk(i,label,cls,fn){
+  var b=sk(i);
+  b.textContent=label;b.disabled=false;
+  b.className=cls||'';b.style.fontSize='';
+  b.onclick=fn;
+}
+
+function renderSoftkeys(){
+  clearSoftkeys();
   if(unitsMode==='off')return;
 
   if(unitsMode==='cat'){
     var start=catPickerPage*5;
     var cats=CATEGORIES.slice(start,start+5);
-    for(var j=0;j<5;j++){
-      var btn=el(ids[j]);
-      var lbl=cats[j]||null;
-      btn.textContent=lbl||'—';btn.disabled=!lbl;
-      btn.className=lbl?'cat-btn':'';
-      btn.onclick=lbl?(function(ix){return function(){selectCategory(ix);};})(j):null;
+    for(var i=0;i<cats.length;i++){
+      (function(idx,cat){setSk(idx,cat,'cat-btn',function(){selectCat(cat);});})(i,cats[i]);
     }
     if(start+5<CATEGORIES.length){
-      var a=el('sk5');a.textContent='→';a.disabled=false;a.className='next-btn';
-      a.onclick=function(){catPickerPage++;render();};
+      setSk(5,'→','next-btn',function(){catPickerPage++;render();});
     }
     return;
   }
 
   // unitsMode==='units'
   if(currentCat==='Currency'){
-    var all=CAT_UNITS.Currency;
-    var tp=Math.ceil(all.length/4)||1;
-    if(catPage>=tp)catPage=Math.max(0,tp-1);
-    var cs=catPage*4;
-    var slice=all.slice(cs,cs+4);
-    // slots 0-3: currencies
-    for(var k=0;k<4;k++){
-      var cb=el(ids[k]);
-      var cu=slice[k]||null;
-      cb.textContent=cu||'—';cb.disabled=!cu;cb.className='';
-      cb.onclick=cu?(function(ix){return function(){tapCurrency(ix);};})(k):null;
-    }
-    // slot 4: → if multiple pages, else dimmed
-    var skN=el('sk4');
-    if(tp>1){
-      skN.textContent='→';skN.disabled=false;skN.className='next-btn';skN.style.fontSize='16px';
-      skN.onclick=function(){catPage=(catPage+1)%tp;render();};
-    } else {
-      skN.textContent='—';skN.disabled=true;skN.className='';skN.style.fontSize='';skN.onclick=null;
-    }
-    // slot 5: +ADD always visible; long-press not easy on mobile so we use a small combined button
-    // Actually show +ADD in slot 4 when single page, −DEL in slot 5 always
-    // Redo: slot 4=+ADD always, slot 5=−DEL always, paging handled by → replacing slot 3 when needed
-    // Simplest clean fix: 3 currency slots + → (if needed) + +ADD + −DEL
-    // Reset slots 0-2 for currencies, slot 3 for → or empty, slot 4=+ADD, slot 5=−DEL
-    for(var r=0;r<6;r++){
-      var rb=el(ids[r]);rb.textContent='—';rb.disabled=true;rb.className='';rb.style.fontSize='';rb.onclick=null;
-    }
-    var perPage=tp>1?3:4;
-    var tp2=Math.ceil(all.length/perPage)||1;
-    if(catPage>=tp2)catPage=Math.max(0,tp2-1);
-    var cs2=catPage*perPage;
-    var slice2=all.slice(cs2,cs2+perPage);
-    for(var k2=0;k2<perPage;k2++){
-      var cb2=el(ids[k2]);
-      var cu2=slice2[k2]||null;
-      cb2.textContent=cu2||'—';cb2.disabled=!cu2;cb2.className='';
-      cb2.onclick=cu2?(function(ix){return function(){tapCurrency(ix);};})(k2):null;
-    }
-    // slot 4: → if multiple pages, else empty
-    var skArrow=el('sk4');
-    if(tp2>1){
-      skArrow.textContent='→';skArrow.disabled=false;skArrow.className='next-btn';skArrow.style.fontSize='16px';
-      skArrow.onclick=function(){catPage=(catPage+1)%tp2;render();};
-    }
-    // slot 5: EDIT always
-    var skEdit=el('sk5');
-    skEdit.textContent='EDIT';skEdit.disabled=false;skEdit.className='add-btn';skEdit.style.fontSize='11px';
-    skEdit.onclick=openEditCurrModal;
-  } else {
-    // Normal category
-    var all2=CAT_UNITS[currentCat];
-    var s2=catPage*5;
-    var slice2=all2.slice(s2,s2+5);
-    for(var m=0;m<5;m++){
-      var ub=el(ids[m]);
-      var ul=slice2[m]||null;
-      ub.textContent=ul||'—';ub.disabled=!ul;ub.className='';
-      ub.onclick=ul?(function(ix){return function(){tapUnit(ix);};})(m):null;
-    }
-    if(s2+5<all2.length){
-      var sk5=el('sk5');sk5.textContent='→';sk5.disabled=false;sk5.className='next-btn';
-      sk5.onclick=function(){catPage=(catPage+1)%Math.ceil(all2.length/5);render();};
-    }
+    renderCurrencySoftkeys();
+  }else{
+    renderUnitSoftkeys();
   }
 }
 
-function selectCategory(idx){
-  var cat=CATEGORIES[catPickerPage*5+idx];
-  if(!cat)return;
+function renderCurrencySoftkeys(){
+  var list=CAT_UNITS.Currency; // direct reference
+  var n=list.length;
+  var perPage=3;
+  var totalPages=n===0?1:Math.ceil(n/perPage);
+  // clamp
+  if(catPage>=totalPages)catPage=totalPages-1;
+  if(catPage<0)catPage=0;
+  var start=catPage*perPage;
+
+  for(var i=0;i<perPage;i++){
+    var code=list[start+i]||null;
+    if(code){
+      (function(c){setSk(i,c,'',function(){tapCurrency(c);});})(code);
+    }
+  }
+  // slot 3: arrow if more than one page
+  if(totalPages>1){
+    (function(tp){
+      setSk(3,'→','next-btn',function(){
+        catPage=(catPage+1)%tp;
+        render();
+      });
+    })(totalPages);
+  }
+  // slot 5: EDIT always
+  setSk(5,'EDIT','edit-btn',openEditCurrModal);
+}
+
+function renderUnitSoftkeys(){
+  var all=CAT_UNITS[currentCat];
+  var start=catPage*5;
+  var slice=all.slice(start,start+5);
+  for(var i=0;i<slice.length;i++){
+    (function(idx,unit){setSk(idx,unit,'',function(){tapUnit(unit);});})(i,slice[i]);
+  }
+  if(start+5<all.length){
+    setSk(5,'→','next-btn',function(){
+      catPage=(catPage+1)%Math.ceil(all.length/5);
+      render();
+    });
+  }
+}
+
+function selectCat(cat){
   currentCat=cat;catPage=0;unitsMode='units';
-  if(currentCat==='Currency')fetchFxRates();
+  if(cat==='Currency')fetchFxRates();
   render();
 }
 
-function tapUnit(idx){
-  var unit=CAT_UNITS[currentCat][catPage*5+idx];
-  if(!unit)return;
+function tapUnit(unit){
   if(!commitInput())return;
   if(!stack.length){status('Stack empty',true);return;}
   var x=stack[stack.length-1];
@@ -554,15 +496,13 @@ function tapUnit(idx){
     var base=from.toK?from.toK(x.value):x.value*from.f;
     x.value=to.fromK?to.fromK(base):base/to.f;
     x.unit=unit;status('Converted → '+unit);shifted=false;
-  } else {
+  }else{
     saveUndo();x.unit=unit;status('Attached '+unit);
   }
   render();
 }
 
-function tapCurrency(idx){
-  var code=CAT_UNITS.Currency[catPage*3+idx];
-  if(!code)return;
+function tapCurrency(code){
   if(!commitInput())return;
   if(!stack.length){status('Stack empty',true);return;}
   var x=stack[stack.length-1];
@@ -572,7 +512,7 @@ function tapCurrency(idx){
     if(result===null)return;
     saveUndo();x.value=result;x.unit=code;
     status('Converted → '+code);shifted=false;
-  } else {
+  }else{
     saveUndo();x.unit=code;status('Attached '+code);
   }
   render();
@@ -595,18 +535,16 @@ function render(){
 
   if(unitsMode==='off'){
     status('');
-  } else if(unitsMode==='cat'){
+  }else if(unitsMode==='cat'){
     var tcp=Math.ceil(CATEGORIES.length/5);
     status('Pick category'+(tcp>1?' (p.'+(catPickerPage+1)+'/'+tcp+')':'')+' →');
-  } else if(currentCat==='Currency'){
-    var tp2=Math.ceil(CAT_UNITS.Currency.length/3)||1;
-    var cp=tp2>1?' (p.'+(catPage+1)+'/'+tp2+')':'';
-    var fx=fxStatus?' · '+fxStatus:'';
-    status((shifted?'SHIFT: convert':'Attach currency')+cp+fx);
-  } else {
-    var tp3=Math.ceil(CAT_UNITS[currentCat].length/5);
-    var up=tp3>1?' (p.'+(catPage+1)+'/'+tp3+')':'';
-    status((shifted?'SHIFT: convert':'Attach unit')+' → '+currentCat+up);
+  }else if(currentCat==='Currency'){
+    var n=CAT_UNITS.Currency.length;
+    var tp=n===0?1:Math.ceil(n/3);
+    status((shifted?'SHIFT: convert':'Attach currency')+(tp>1?' (p.'+(catPage+1)+'/'+tp+')':'')+(fxStatus?' · '+fxStatus:''));
+  }else{
+    var tp2=Math.ceil(CAT_UNITS[currentCat].length/5);
+    status((shifted?'SHIFT: convert':'Attach unit')+' → '+currentCat+(tp2>1?' (p.'+(catPage+1)+'/'+tp2+')':''));
   }
 
   renderSoftkeys();
@@ -614,23 +552,13 @@ function render(){
 }
 
 // ── Input ─────────────────────────────────────────────────────────────────
-function isCompleteMixedNumber(s){
-  // matches "whole frac/denom" e.g. "2 1/2"
-  return /^\-?\d+\s+\d+\/\d+$/.test(s.trim());
-}
-
+function isCompleteMixedNumber(s){return /^\-?\d+\s+\d+\/\d+$/.test(s.trim());}
 function digit(c){
   var token=input.split(' ').pop();
   if(c==='/'&&token.indexOf('/')!==-1)return;
   if(c==='.'&&token.indexOf('.')!==-1)return;
   if(c===' '&&input.slice(-1)===' ')return;
-
-  // auto-push on SPACE if input is already a complete mixed number
-  if(c===' '&&isCompleteMixedNumber(input)){
-    if(!commitInput())return;
-    render();return;
-  }
-
+  if(c===' '&&isCompleteMixedNumber(input)){if(!commitInput())return;render();return;}
   input+=c;render();
 }
 function back(){input=input.replace(/\s$/,'').slice(0,-1);render();}
@@ -679,18 +607,10 @@ function rollDown(){
   saveUndo();stack.unshift(stack.pop());render();
 }
 function clearAll(){
-  var now=Date.now();
-  var doubleTap=now-acLastTap<400;
-  acLastTap=now;
-  saveUndo();
-  stack=[];input='';
-  if(doubleTap){
-    // full reset including units
-    unitsMode='off';shifted=false;currentCat=null;catPage=0;catPickerPage=0;
-    status('Full reset');
-  } else {
-    status('Stack cleared');
-  }
+  var now=Date.now(),doubleTap=now-acLastTap<400;acLastTap=now;
+  saveUndo();stack=[];input='';
+  if(doubleTap){unitsMode='off';shifted=false;currentCat=null;catPage=0;catPickerPage=0;status('Full reset');}
+  else{status('Stack cleared');}
   render();
 }
 
@@ -709,10 +629,10 @@ function operate(op){
       if(!u1||!u2||u1.dim!==u2.dim){status('Incompatible units',true);return;}
       r.value=(op==='plus'?x2.value*tb(x2.unit)+x1.value*tb(x1.unit):x2.value*tb(x2.unit)-x1.value*tb(x1.unit))/tb(x2.unit);
       r.unit=x2.unit;
-    } else {
+    }else{
       r.value=op==='plus'?x2.value+x1.value:x2.value-x1.value;r.unit=x2.unit||x1.unit;
     }
-  } else if(op==='times'){r.value=x2.value*x1.value;}
+  }else if(op==='times'){r.value=x2.value*x1.value;}
   else if(op==='div'){r.value=x2.value/x1.value;}
   stack.splice(stack.length-2,2,r);render();
 }
@@ -752,14 +672,12 @@ function toggleUnitsMode(){
 
 // ── Paste Modal ───────────────────────────────────────────────────────────
 function openPasteModal(){
-  el('pasteInput').value='';
-  el('pasteModal').classList.add('show');
+  el('pasteInput').value='';el('pasteModal').classList.add('show');
   setTimeout(function(){el('pasteInput').focus();},100);
 }
 function closePasteModal(){el('pasteModal').classList.remove('show');}
 function confirmPaste(){
-  var text=el('pasteInput').value.trim();
-  closePasteModal();
+  var text=el('pasteInput').value.trim();closePasteModal();
   if(!text){status('Nothing to paste',true);return;}
   var vals=parseInput(text.replace(/,/g,''));
   if(!vals||!vals.length){status('Invalid paste value',true);return;}
@@ -769,9 +687,9 @@ function confirmPaste(){
 el('pasteModal').addEventListener('click',function(e){if(e.target===el('pasteModal'))closePasteModal();});
 el('pasteInput').addEventListener('keydown',function(e){if(e.key==='Enter')confirmPaste();});
 
-// ── Currency Edit Modal ───────────────────────────────────────────────────
-function openEditCurrModal(){ showEditMain(); el('editCurrModal').classList.add('show'); }
-function closeEditCurrModal(){ el('editCurrModal').classList.remove('show'); }
+// ── Currency Modal ────────────────────────────────────────────────────────
+function openEditCurrModal(){showEditMain();el('editCurrModal').classList.add('show');}
+function closeEditCurrModal(){el('editCurrModal').classList.remove('show');}
 function showEditMain(){
   el('editCurrMain').style.display='';
   el('editCurrAdd').style.display='none';
@@ -786,7 +704,7 @@ function showAddCurr(){
 function showDelCurr(){
   el('editCurrMain').style.display='none';
   el('editCurrDel').style.display='';
-  var list=el('delCurrList'); list.innerHTML='';
+  var list=el('delCurrList');list.innerHTML='';
   CAT_UNITS.Currency.forEach(function(code){
     var btn=document.createElement('button');
     btn.textContent=code;
@@ -795,9 +713,17 @@ function showDelCurr(){
   });
 }
 function confirmAddCurrency(){
-  var code=el('addCurrInput').value.toUpperCase().trim();
+  var raw=el('addCurrInput').value;
+  var code=raw.toUpperCase().trim();
   closeEditCurrModal();
-  if(code)addCurrency(code);
+  if(!code)return;
+  if(CAT_UNITS.Currency.indexOf(code)!==-1){status(code+' already in list',true);return;}
+  CAT_UNITS.Currency.push(code);
+  saveCurrencies();
+  // jump to last page
+  catPage=Math.max(0,Math.ceil(CAT_UNITS.Currency.length/3)-1);
+  status('Added '+code);
+  render();
 }
 el('editCurrModal').addEventListener('click',function(e){if(e.target===el('editCurrModal'))closeEditCurrModal();});
 el('addCurrInput').addEventListener('keydown',function(e){if(e.key==='Enter')confirmAddCurrency();});
@@ -832,8 +758,7 @@ document.addEventListener('keydown',function(e){
 
 // ── PWA ───────────────────────────────────────────────────────────────────
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./sw.js',{scope:'./'})
-    .catch(function(e){console.warn('SW:',e);});
+  navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(function(e){console.warn('SW:',e);});
 }
 
 // ── Persist ───────────────────────────────────────────────────────────────
