@@ -67,11 +67,7 @@ select{width:100%;padding:10px;border-radius:8px;border:none;background:linear-g
 .key.shift {background:linear-gradient(#ffeb3b,#f57f17);color:#3e2000;}
 .key.shift.active{background:linear-gradient(#f57f17,#ff9800);color:white;box-shadow:0 0 12px #ff980088;}
 .key.units-active{box-shadow:0 0 14px #9575cd99;}
-#offlineBadge{
-  display:none;background:#555;color:#fff;font-size:12px;font-weight:600;
-  border-radius:6px;padding:4px 10px;margin-bottom:8px;text-align:center;
-}
-#offlineBadge.show{display:block;}
+
 #pasteModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;z-index:100;}
 #pasteModal.show{display:flex;}
 #pasteBox{background:#2d3138;border-radius:14px;padding:22px;width:85%;max-width:360px;box-shadow:0 10px 40px rgba(0,0,0,0.5);}
@@ -85,8 +81,6 @@ select{width:100%;padding:10px;border-radius:8px;border:none;background:linear-g
 </head>
 <body>
 <div class="calc">
-  <div id="offlineBadge">⚡ Offline mode</div>
-
   <div class="display">
     <div id="stackDisplay"></div>
     <div class="input-line" id="inputLine"></div>
@@ -317,8 +311,8 @@ function render(){
     html+='<div class="'+cls+'"><span class="lbl">X'+lvl+'</span><span>'+val+'</span></div>';
   }
   el('stackDisplay').innerHTML=html;
-  var displayInput = input.replace(/ /g, '\u00B7'); // show spaces as · 
-  el('inputLine').innerHTML=(input?escHtml(displayInput):'')+' <span class="cursor">▎</span>';
+  var displayInput = input.replace(/ /g, '<span style="color:#4da3ff;font-size:20px;">·</span>');
+  el('inputLine').innerHTML=(input?displayInput:'')+' <span class="cursor">▎</span>';
   el('shiftBtn').classList.toggle('active',shifted);
   el('unitsBtn').classList.toggle('units-active',unitsMode!=='off');
 
@@ -580,11 +574,7 @@ document.addEventListener('keydown',function(e){
   }
 });
 
-// ── Offline Detection ─────────────────────────────────────────────────────
-function updateOffline(){el('offlineBadge').classList.toggle('show',!navigator.onLine);}
-window.addEventListener('online',updateOffline);
-window.addEventListener('offline',updateOffline);
-updateOffline();
+
 
 // ── PWA / Service Worker ──────────────────────────────────────────────────
 if('serviceWorker' in navigator){
