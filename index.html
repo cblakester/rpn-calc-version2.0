@@ -558,7 +558,7 @@ function tapUnit(idx){
 }
 
 function tapCurrency(idx){
-  var code=CAT_UNITS.Currency[catPage*4+idx];
+  var code=CAT_UNITS.Currency[catPage*3+idx];
   if(!code)return;
   if(!commitInput())return;
   if(!stack.length){status('Stack empty',true);return;}
@@ -596,7 +596,7 @@ function render(){
     var tcp=Math.ceil(CATEGORIES.length/5);
     status('Pick category'+(tcp>1?' (p.'+(catPickerPage+1)+'/'+tcp+')':'')+' →');
   } else if(currentCat==='Currency'){
-    var tp2=Math.ceil(CAT_UNITS.Currency.length/4)||1;
+    var tp2=Math.ceil(CAT_UNITS.Currency.length/3)||1;
     var cp=tp2>1?' (p.'+(catPage+1)+'/'+tp2+')':'';
     var fx=fxStatus?' · '+fxStatus:'';
     status((shifted?'SHIFT: convert':'Attach currency')+cp+fx);
@@ -611,12 +611,23 @@ function render(){
 }
 
 // ── Input ─────────────────────────────────────────────────────────────────
+function isCompleteMixedNumber(s){
+  // matches "whole frac/denom" e.g. "2 1/2"
+  return /^\-?\d+\s+\d+\/\d+$/.test(s.trim());
+}
+
 function digit(c){
-  // current token = everything after the last space
   var token=input.split(' ').pop();
   if(c==='/'&&token.indexOf('/')!==-1)return;
   if(c==='.'&&token.indexOf('.')!==-1)return;
   if(c===' '&&input.slice(-1)===' ')return;
+
+  // if input is a complete mixed number and user types a digit, auto-push and start fresh
+  if(c!=' '&&c!='.'&&c!='/'&&isCompleteMixedNumber(input)){
+    if(!commitInput())return;
+    input=c;render();return;
+  }
+
   input+=c;render();
 }
 function back(){input=input.replace(/\s$/,'').slice(0,-1);render();}
