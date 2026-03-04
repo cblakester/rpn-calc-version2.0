@@ -364,13 +364,16 @@ function addCurrency(code){
   code=code.toUpperCase().trim();
   if(!code)return;
   if(CAT_UNITS.Currency.indexOf(code)!==-1){status(code+' already in list',true);return;}
-  // warn if not a known fiat or crypto
   if(!fxRates[code]&&!isCrypto(code)){
     status(code+' not found in rates — added anyway',false);
   } else {
     status('Added '+code);
   }
-  CAT_UNITS.Currency.push(code);saveCurrencies();render();
+  CAT_UNITS.Currency.push(code);
+  saveCurrencies();
+  // jump to last page so new currency is visible
+  catPage=Math.ceil(CAT_UNITS.Currency.length/3)-1;
+  render();
 }
 function delCurrency(code){
   var idx=CAT_UNITS.Currency.indexOf(code);
