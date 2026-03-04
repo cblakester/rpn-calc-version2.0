@@ -419,8 +419,14 @@ function renderSoftkeys(){
     for(var i=0;i<cats.length;i++){
       (function(idx,cat){setSk(idx,cat,'cat-btn',function(){selectCat(cat);});})(i,cats[i]);
     }
-    if(start+5<CATEGORIES.length){
-      setSk(5,'→','next-btn',function(){catPickerPage++;render();});
+    var totalCatPages=Math.ceil(CATEGORIES.length/5);
+    if(catPickerPage<totalCatPages-1){
+      (function(tcp){
+        setSk(5,'→','next-btn',function(){
+          catPickerPage=(catPickerPage+1)%tcp;
+          render();
+        });
+      })(totalCatPages);
     }
     return;
   }
@@ -464,16 +470,21 @@ function renderCurrencySoftkeys(){
 
 function renderUnitSoftkeys(){
   var all=CAT_UNITS[currentCat];
+  var totalPages=Math.ceil(all.length/5)||1;
+  if(catPage>=totalPages)catPage=totalPages-1;
+  if(catPage<0)catPage=0;
   var start=catPage*5;
   var slice=all.slice(start,start+5);
   for(var i=0;i<slice.length;i++){
-    (function(idx,unit){setSk(idx,unit,'',function(){tapUnit(unit);});})(i,slice[i]);
+    (function(unit){setSk(i,unit,'',function(){tapUnit(unit);});})(slice[i]);
   }
-  if(start+5<all.length){
-    setSk(5,'→','next-btn',function(){
-      catPage=(catPage+1)%Math.ceil(all.length/5);
-      render();
-    });
+  if(totalPages>1){
+    (function(tp){
+      setSk(5,'→','next-btn',function(){
+        catPage=(catPage+1)%tp;
+        render();
+      });
+    })(totalPages);
   }
 }
 
